@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "abaqus"
+version = "0.1.0"
+description = "abaqus portafolio"
+authors = ["sebatianbreguel <breguelsebastian@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2.2"
+django = "^5.0.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
