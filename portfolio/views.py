@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .forms import UploadFileForm
-from .models import Asset, Holding, Portfolio, Price, Weight
+from .models import Asset, Holding, Portfolio, Price
 from .utils import (
     calculate_actives_cuantity,
     calculate_portfolio_value,
@@ -73,43 +73,27 @@ def handle_uploaded_file(f):
             asset = Asset.objects.get(name=asset_name)
             price = row[asset_name]
             Price.objects.get_or_create(
-                asset=asset, date=date, price=price, date_id=date_id
+                asset=asset, date=date, value=price, date_id=date_id
             )
 
-    # Weights
+    # Holdings for the initial date
+    initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
+
+    
     for _, row in df_weights.iterrows():
         date = row["Fecha"]
         date = date.strftime("%Y-%m-%d")
         asset = Asset.objects.get(name=row["activos"])
+        price = Price.objects.get(asset=asset, date=initial_date)
         portfolio = Portfolio.objects.get(name=f'Portfolio {row["portafolio"]}')
-        weight = row["weight"]
-        Weight.objects.get_or_create(
-            asset=asset,
-            portfolio=portfolio,
-            date=date,
-            weight=weight,
+        weight = float(row["weight"])
+        
+        quantity = calculate_actives_cuantity(
+            weight, price, portfolio
         )
-
-    # Holdings for the initial date
-    initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
-    initial_prices = {
-        price.asset.name: price.price
-        for price in Price.objects.filter(date=initial_date)
-    }
-    portfolios = Portfolio.objects.all()
-    for portfolio in portfolios:
-        weights = Weight.objects.filter(portfolio=portfolio, date=initial_date)
-        for weight in weights:
-            print("assets", weight.asset)
-            print(portfolio)
-            print(date)
-            quantity = calculate_actives_cuantity(
-                weight.asset, weight, initial_prices, portfolio
-            )
-            asset = Asset.objects.get(name=weight.asset.name)
-            Holding.objects.create(
-                asset=asset, portfolio=portfolio, date=initial_date, quantity=quantity
-            )
+        Holding.objects.create(
+            asset=asset, portfolio=portfolio, date=initial_date, quantity=quantity, weight = weight
+        )
 
 
 def upload_file(request):

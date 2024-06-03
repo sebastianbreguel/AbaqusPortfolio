@@ -1,8 +1,7 @@
-def calculate_actives_cuantity(asset, weight, prices, portafolio):
+from decimal import Decimal
+def calculate_actives_cuantity(weight, price, portafolio):
     value = portafolio.value
-    weight = weight.weight
-    price = prices[asset.name]
-    quantity = (weight * value) / price
+    quantity = (Decimal(weight) * value) / price.value
 
     return quantity
 
@@ -10,7 +9,7 @@ def calculate_actives_cuantity(asset, weight, prices, portafolio):
 def calculate_weights(prices, quantites, portf_value):
     weights = {}
     for quantity in quantites:
-        precio = prices.get(asset=quantity.asset).price
+        precio = prices.get(asset=quantity.asset).value
         weight = (precio * quantity.quantity) / portf_value
         weights[quantity.asset.name] = weight
     return weights
@@ -19,6 +18,6 @@ def calculate_weights(prices, quantites, portf_value):
 def calculate_portfolio_value(quantities, prices):
     value = 0
     for quantity in quantities:
-        price = prices.get(asset=quantity.asset).price
+        price = prices.get(asset=quantity.asset).value
         value += price * quantity.quantity
     return value

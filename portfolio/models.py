@@ -25,36 +25,17 @@ class Price(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
     date = models.DateField()
     date_id = models.IntegerField(blank=True, null=True)
-    price = models.DecimalField(max_digits=20, decimal_places=2)
+    value = models.DecimalField(max_digits=20, decimal_places=2)
 
     class Meta:
         unique_together = ("asset", "date")
 
     def __str__(self):
-        return f"{self.asset.name} - {self.date} - ${self.price}"
+        return f"{self.asset.name} - {self.date} - ${self.value}"
 
     def clean(self):
         if self.price < 0:
             raise ValidationError("Price must be greater than 0")
-
-
-class Weight(models.Model):
-    asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
-    date = models.DateField()
-    weight = models.DecimalField(max_digits=5, decimal_places=4)
-
-    class Meta:
-        unique_together = ("asset", "date", "portfolio")
-
-    def __str__(self):
-        return (
-            f"{self.portfolio.name}: - {self.asset.name}  - {self.weight} - {self.date}"
-        )
-
-    def clean(self):
-        if self.weight < 0:
-            raise ValidationError("Quantity must be greater than 0")
 
 
 class Holding(models.Model):
@@ -62,7 +43,8 @@ class Holding(models.Model):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=20, decimal_places=4)
     date = models.DateField()
-
+    weight = models.DecimalField(max_digits=7, decimal_places=6, default=0)
+    
     class Meta:
         unique_together = ("asset", "date", "portfolio")
 
