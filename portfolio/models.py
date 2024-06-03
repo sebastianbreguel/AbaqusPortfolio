@@ -1,27 +1,42 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
+
 class Asset(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
+
 
 class Portfolio(models.Model):
-    name = models.CharField(max_length=100)
-    value = models.DecimalField(max_digits=20, decimal_places=2, default=1000000000)
+    name = models.CharField(max_length=100, unique=True)
+    value = models.DecimalField(max_digits=25, decimal_places=2, default=1000000000)
 
     def __str__(self):
-        return self.name
+        return f" porta{self.name}"
+
+    def clean(self):
+        if self.value < 0:
+            raise ValidationError("Value must be greater than 0")
+
 
 class Price(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
     date = models.DateField()
-    price = models.DecimalField(max_digits=20, decimal_places=2)
     date_id = models.IntegerField(blank=True, null=True)
+    price = models.DecimalField(max_digits=20, decimal_places=2)
 
+    class Meta:
+        unique_together = ("asset", "date")
 
     def __str__(self):
         return f"{self.asset.name} - {self.date} - ${self.price}"
+
+    def clean(self):
+        if self.price < 0:
+            raise ValidationError("Price must be greater than 0")
+
 
 class Weight(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
@@ -29,14 +44,33 @@ class Weight(models.Model):
     date = models.DateField()
     weight = models.DecimalField(max_digits=5, decimal_places=4)
 
-    def __str__(self):
-        return f"{self.portfolio.name}: - {self.asset.name}  - {self.weight} - {self.date}"
+    class Meta:
+        unique_together = ("asset", "date", "portfolio")
 
-class Quantity(models.Model):
+    def __str__(self):
+        return (
+            f"{self.portfolio.name}: - {self.asset.name}  - {self.weight} - {self.date}"
+        )
+
+    def clean(self):
+        if self.weight < 0:
+            raise ValidationError("Quantity must be greater than 0")
+
+
+class Holding(models.Model):
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=20, decimal_places=4)
     date = models.DateField()
 
+    class Meta:
+        unique_together = ("asset", "date", "portfolio")
+
     def __str__(self):
-        return f"{self.portfolio.name} - {self.asset.name} - {self.quantity} - {self.date}"
+        return (
+            f"{self.portfolio.name} - {self.asset.name} - {self.quantity} - {self.date}"
+        )
+
+    def clean(self):
+        if self.quantity < 0:
+            raise ValidationError("Quantity must be greater than 0")

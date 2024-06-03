@@ -1,3 +1,9 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Asset, Holding, Portfolio, Price, Weight
+
+admin.site.register(Asset)
+admin.site.register(Price)
+admin.site.register(Holding)
+admin.site.register(Portfolio)
+admin.site.register(Weight)
