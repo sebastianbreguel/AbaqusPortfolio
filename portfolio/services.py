@@ -6,8 +6,12 @@ from decimal import Decimal
 import pandas as pd
 from django.db import transaction
 
-from .models import Asset, Holding, Portfolio, Price
-from .utils import calculate_actives_cuantity
+from .models import Asset, Portfolio, Price, Tick
+from .utils import (
+    calculate_actives_cuantity,
+    calculate_portfolio_value,
+    calculate_weights,
+)
 
 
 class FileUploadServices:
@@ -49,7 +53,6 @@ class FileUploadServices:
         df_weights["portafolio"] = df_weights["portafolio"].apply(
             lambda x: portfolio_columns[x]
         )
-        print(df_prices)
         return df_weights, df_prices, initial_date
 
     @transaction.atomic
@@ -75,7 +78,7 @@ class FileUploadServices:
                 price = row[asset_name]
                 create_or_update_price(asset_name, date, date_id, price)
 
-        # Holdings
+        # Ticks
         for _, row in df_weights.iterrows():
             date = row["Fecha"].strftime("%Y-%m-%d")
             asset_name = row["activos"]
@@ -83,9 +86,8 @@ class FileUploadServices:
             weight = float(row["weight"])
             price = Price.objects.get(asset__name=asset_name, date=initial_date)
             portafolio = Portfolio.objects.get(name=portfolio_name)
-            print(price)
             quantity = calculate_actives_cuantity(weight, price, portafolio)
-            create_or_update_holding(asset_name, portfolio_name, date, quantity, weight)
+            create_or_update_tick(asset_name, portfolio_name, date, quantity, weight)
 
         return True
 
@@ -108,7 +110,7 @@ def update_instance_fields(instance, data):
 
         if current_value != new_value:
             setattr(instance, field, new_value)
-            update_fields.append(field)  
+            update_fields.append(field)
     if update_fields:
         instance.full_clean()
         instance.save(update_fields=update_fields)
@@ -143,17 +145,15 @@ def create_or_update_price(asset_name, date, date_id, value=None):
 
 
 @transaction.atomic
-def create_or_update_holding(asset_name, portfolio_name, date, quantity, weight):
+def create_or_update_tick(asset_name, portfolio_name, date, quantity, weight):
     asset = Asset.objects.get(name=asset_name)
     portfolio = Portfolio.objects.get(name=portfolio_name)
-    holding, created = Holding.objects.get_or_create(
+    tick, created = Tick.objects.get_or_create(
         asset=asset,
         portfolio=portfolio,
         date=date,
         defaults={"quantity": quantity, "weight": weight},
     )
     if not created:
-        holding = update_instance_fields(
-            holding, {"quantity": quantity, "weight": weight}
-        )
-    return holding
+        tick = update_instance_fields(tick, {"quantity": quantity, "weight": weight})
+    return tick

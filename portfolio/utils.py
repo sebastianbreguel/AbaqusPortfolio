@@ -8,18 +8,20 @@ def calculate_actives_cuantity(weight, price, portafolio):
     return quantity
 
 
-def calculate_weights(prices, quantites, portf_value):
+def calculate_weights(prices, ticks, portf_value):
     weights = {}
-    for quantity in quantites:
-        precio = prices.get(asset=quantity.asset).value
-        weight = (precio * quantity.quantity) / portf_value
-        weights[quantity.asset.name] = weight
+    for tick in ticks:
+        precio = prices.get(asset=tick.asset)
+        quantity = tick.quantity
+        weight = (precio.value * quantity) / portf_value
+        weights[precio.asset.name] = weight
     return weights
 
 
-def calculate_portfolio_value(quantities, prices):
+def calculate_portfolio_value(ticks, prices, have_transaction=False):
     value = 0
-    for quantity in quantities:
-        price = prices.get(asset=quantity.asset).value
-        value += price * quantity.quantity
+    for tick in ticks:
+        price = prices.get(asset=tick.asset).value
+        value += price * tick.quantity
+    value = round(value, 2)
     return value

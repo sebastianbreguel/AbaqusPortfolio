@@ -1,116 +1,40 @@
-import io
-import os
-import tempfile
-from datetime import datetime
-
-import matplotlib
-
-matplotlib.use("Agg")  # Usar el backend 'Agg' para evitar problemas de GUI
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.express as px
+import requests
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
-from .forms import UploadFileForm
-from .models import Asset, Holding, Portfolio, Price
+from .forms import TransactionForm, UploadFileForm
+from .models import Asset, Portfolio, Price, Tick, Transaction
 from .services import FileUploadServices
-from .utils import (
-    calculate_actives_cuantity,
-    calculate_portfolio_value,
-    calculate_weights,
-)
+from .utils import calculate_portfolio_value, calculate_weights
 
-# Create your views here.
-
-
-# def handle_uploaded_file(f):
-
-#     temp_dir = tempfile.gettempdir()
-#     file_path = os.path.join(temp_dir, "uploaded_file.xlsx")
-#     with open(file_path, "wb+") as destination:
-#         for chunk in f.chunks():
-#             destination.write(chunk)
-#     try:
-#         df_weights = pd.read_excel(file_path, sheet_name="weights")
-#         df_prices = pd.read_excel(file_path, sheet_name="Precios")
-#         df_prices.reset_index(drop=False, inplace=True)
-#         df_prices.rename(columns={"index": "date_id"}, inplace=True)
-
-#     except Exception as e:
-#         print(f"Error reading the Excel file: {e}")
-#         return None, None
-
-#     portfolio_columns = [col for col in df_weights.columns if "portafolio" in col]
-#     portfolio_columns = {col: col.split(" ")[1] for col in portfolio_columns}
-#     initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
-
-#     df_weights = df_weights.melt(
-#         id_vars=["Fecha", "activos"],
-#         value_vars=[f"{portfolio}" for portfolio in portfolio_columns.keys()],
-#         var_name="portafolio",
-#         value_name="weight",
-#     )
-
-#     df_weights["portafolio"] = df_weights["portafolio"].apply(
-#         lambda x: portfolio_columns[x]
-#     )
-
-#     # Activos
-#     assets = df_prices.columns[2:]
-#     for asset_name in assets:
-#         Asset.objects.get_or_create(name=asset_name)
-
-#     # Portafolios
-#     for portafolio in df_weights["portafolio"].unique():
-#         Portfolio.objects.get_or_create(name=f"Portfolio {portafolio}")
-
-#     # Precios
-#     for _, row in df_prices.iterrows():
-#         date = row["Dates"]
-#         date = date.strftime("%Y-%m-%d")
-#         date_id = row["date_id"]
-#         for asset_name in assets:
-#             asset = Asset.objects.get(name=asset_name)
-#             price = row[asset_name]
-#             Price.objects.get_or_create(
-#                 asset=asset, date=date, value=price, date_id=date_id
-#             )
-
-#     # Holdings
-#     for _, row in df_weights.iterrows():
-#         date = row["Fecha"]
-#         date = date.strftime("%Y-%m-%d")
-#         asset = Asset.objects.get(name=row["activos"])
-#         price = Price.objects.get(asset=asset, date=initial_date)
-#         portfolio = Portfolio.objects.get(name=f'Portfolio {row["portafolio"]}')
-#         weight = float(row["weight"])
-
-#         quantity = calculate_actives_cuantity(weight, price.value, portfolio)
-#         Holding.objects.create(
-#             asset=asset,
-#             portfolio=portfolio,
-#             date=initial_date,
-#             quantity=quantity,
-#             weight=weight,
-#         )
+# from common.utils import calculate_portfolio_value, calculate_weights
 
 
 def index(request):
-    # Verificar si hay datos en la base de datos
-    have_Portfolio = (
-        Portfolio.objects.exists()
-    )  # Suponiendo que si hay activos, los datos están subidos
+    have_Portfolio = Portfolio.objects.exists()
+    context = {}
 
     if have_Portfolio:
         Portfolios = Portfolio.objects.all()
+        available_dates = Price.objects.values_list("date", flat=True).distinct()
+        available_dates = [date.strftime("%Y-%m-%d") for date in available_dates]
+        min_date = available_dates[0]
+        max_date = available_dates[-1]
+        context = {
+            "Portfolios": Portfolios,
+            "available_dates": available_dates,
+            "min_date": min_date,
+            "max_date": max_date,
+        }
 
-    
-    return render(request, "portfolio/index.html", {"Portfolios": Portfolios})
+    return render(request, "portfolio/index.html", context)
 
 
 def upload_file(request):
@@ -146,61 +70,178 @@ def data_In_Range(request):
             {"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST
         )
     portfolio = Portfolio.objects.get(name=f"Portfolio {portfolio_id}")
-    Quantities = Holding.objects.filter(portfolio=portfolio)
+
+    ticks = Tick.objects.filter(portfolio=portfolio)
 
     prices = Price.objects.filter(date=fecha_inicio)
     prices_range = Price.objects.filter(date__range=[fecha_inicio, fecha_fin])
-
     for price in prices_range:
         date_id = price.date_id
-        portf_value = calculate_portfolio_value(Quantities, prices)
-        weights = calculate_weights(prices, Quantities, portf_value)
+        portf_value = calculate_portfolio_value(ticks, prices)
+        weights = calculate_weights(prices, ticks, portf_value)
 
+    transactions = Transaction.objects.filter(
+        portfolio=portfolio, date__range=[fecha_inicio, fecha_fin]
+    )
+
+    initial_quantities = {tick.asset: tick.quantity for tick in ticks}
     result = []
     for date in pd.date_range(fecha_inicio, fecha_fin):
+        adjusted_quantities = initial_quantities.copy()
+
+        for transaction in transactions.filter(date__lte=date):
+            if transaction.transaction_type == "sell":
+                adjusted_quantities[transaction.asset] -= transaction.quantity
+            else:
+                adjusted_quantities[transaction.asset] += transaction.quantity
+
+        temp_ticks = []
+        for asset, adjusted_quantity in adjusted_quantities.items():
+            tick = Tick(asset=asset, portfolio=portfolio, quantity=adjusted_quantity)
+            temp_ticks.append(tick)
+
         prices = Price.objects.filter(date=date)
-        date_id = prices[0].date_id
-        portf_value = calculate_portfolio_value(Quantities, prices)
-        weights = calculate_weights(prices, Quantities, portf_value)
+        portfolio_value = calculate_portfolio_value(temp_ticks, prices)
+        weights = calculate_weights(prices, temp_ticks, portfolio_value)
+
         result.append(
             {
-                "date_id": date_id,
+                "date": date.strftime("%Y-%m-%d"),
                 "portfolio": portfolio_id,
-                "value": portf_value,
+                "value": portfolio_value,
                 "weights": weights,
             }
         )
 
     return JsonResponse(result, safe=False)
 
-    # df = pd.DataFrame(result)
 
-    # # Crear DataFrame para los pesos
-    # df_weights = pd.DataFrame([r["weights"] for r in result], index=df["date_id"])
-    # df_weights = df_weights.apply(pd.to_numeric, errors='coerce')  # Convertir los datos a numéricos
+def compare_data(request):
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    portfolio_id = request.GET.get("portfolio")
 
-    # # Generar gráficos
-    # plt.figure(figsize=(14, 7))
+    if not fecha_inicio or not fecha_fin or not portfolio_id:
+        return HttpResponse("Missing parameters", status=400)
 
-    # # Gráfico de área apilada para w_{i,t}
-    # plt.subplot(2, 1, 1)
-    # df_weights.plot(kind='area', stacked=True, ax=plt.gca())
-    # plt.title('Evolución de los Pesos ($w_{i,t}$)')
-    # plt.xlabel('Fecha')
-    # print(df)
-    # plt.ylabel('Peso')
+    response = requests.get(
+        request.build_absolute_uri("/api/portfolio-data/"),
+        params={
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "portfolio": portfolio_id,
+        },
+    )
 
-    # # Gráfico de línea para V_t
-    # plt.subplot(2, 1, 2)
-    # plt.plot(df["date_id"], df["value"], label='V_t')
-    # plt.title('Evolución del Valor del Portafolio ($V_t$)')
-    # plt.xlabel('Fecha')
-    # plt.ylabel('Valor del Portafolio')
-    # plt.legend()
+    if response.status_code != 200:
+        return HttpResponse("Error fetching data", status=response.status_code)
 
-    # # Guardar el gráfico en un objeto BytesIO
-    # buffer = io.BytesIO()
-    # plt.savefig(buffer, format='png')
-    # buffer.seek(0)
+    data = response.json()
 
-    # return HttpResponse(buffer, content_type='image/png')
+    dates = [entry["date"] for entry in data]
+    values = [entry["value"] for entry in data]
+    weights = [entry["weights"] for entry in data]
+
+    # Data preparation for weights plot
+    weights_df = pd.DataFrame(weights, index=dates)
+    weights_df = weights_df.apply(pd.to_numeric, errors="coerce").fillna(0)
+
+    # Plot portfolio values using Plotly
+    value_fig = px.line(x=dates, y=values, labels={"x": "Date", "y": "Value"})
+    value_fig.update_layout(
+        yaxis=dict(autorange=True, title="Valor", type="linear"),
+        xaxis=dict(title="Fecha"),
+    )
+    value_plot = value_fig.to_html(full_html=False)
+
+    # Plot weights as stacked area chart using Plotly
+    weights_df = weights_df.reset_index().melt(
+        id_vars=["index"], var_name="Asset", value_name="Weight"
+    )
+    weights_fig = px.area(weights_df, x="index", y="Weight", color="Asset")
+    weights_fig.update_layout(
+        xaxis=dict(type="category", categoryorder="category ascending")
+    )
+    weights_fig.update_layout(
+        yaxis=dict(autorange=True, title="Weight", type="linear"),
+        xaxis=dict(title="Fecha"),
+    )
+    weights_plot = weights_fig.to_html(full_html=False)
+
+    context = {
+        "value_plot": value_plot,
+        "weights_plot": weights_plot,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "portfolio_id": portfolio_id,
+    }
+    return render(request, "portfolio/compare_data.html", context)
+
+
+def transaction_list(request):
+    transactions = Transaction.objects.all()
+    for transaction in transactions:
+        transaction.total_amount = transaction.quantity * transaction.price
+
+    return render(
+        request, "portfolio/transaction_list.html", {"transactions": transactions}
+    )
+
+
+@transaction.atomic
+def create_transaction(request):
+
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            response = create_transaction_api(request)
+            if response.status_code == status.HTTP_201_CREATED:
+                return render(request, "portfolio/transaction_list.html")
+    else:
+        form = TransactionForm()
+    return render(request, "portfolio/transaction_form.html", {"form": form})
+
+
+@api_view(["POST"])
+def create_transaction_api(request):
+    form = TransactionForm(request.data)
+    if form.is_valid():
+        cleaned_data = form.cleaned_data
+        portfolio = cleaned_data["portfolio"]
+        date = cleaned_data["date"]
+        asset_to_sell = cleaned_data["asset_to_sell"]
+        asset_to_buy = cleaned_data["asset_to_buy"]
+        value = cleaned_data["value"]
+        quantity_to_sell = cleaned_data["quantity_to_sell"]
+        quantity_to_buy = cleaned_data["quantity_to_buy"]
+        price_to_sell = cleaned_data["price_to_sell"]
+        price_to_buy = cleaned_data["price_to_buy"]
+
+        # Create the sell transaction
+        transaction_1, _ = Transaction.objects.get_or_create(
+            portfolio=portfolio,
+            date=date,
+            asset=asset_to_sell,
+            quantity=quantity_to_sell,
+            value=value,
+            price=price_to_sell,
+            transaction_type="sell",
+        )
+
+        # Create the buy transaction
+        transaction_2, _ = Transaction.objects.get_or_create(
+            portfolio=portfolio,
+            date=date,
+            asset=asset_to_buy,
+            quantity=quantity_to_buy,
+            value=value,
+            price=price_to_buy,
+            transaction_type="buy",
+        )
+        print("Transaction created successfully")
+
+        return Response(
+            {"message": "Transaction created successfully"},
+            status=status.HTTP_201_CREATED,
+        )
+    return Response({"errors": form.errors}, status=status.HTTP_400_BAD_REQUEST)

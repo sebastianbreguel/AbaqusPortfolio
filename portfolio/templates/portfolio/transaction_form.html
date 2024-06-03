@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Crear Transacción
+{% endblock %}
+
+{% block content %}
+  <h1>Crear Nueva Transacción</h1>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="portfolio">Portafolio:</label>
+      {{ form.portfolio }}
+    </div>
+    <div class="form-group">
+      <label for="date">Fecha:</label>
+      {{ form.date }}
+    </div>
+    <div class="form-group">
+      <label for="asset_to_sell">Activo a Vender:</label>
+      {{ form.asset_to_sell }}
+    </div>
+    <div class="form-group">
+      <label for="asset_to_buy">Activo a Comprar:</label>
+      {{ form.asset_to_buy }}
+    </div>
+    <div class="form-group">
+      <label for="value">Cantidad a Comprar/Vender:</label>
+      {{ form.value }}
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar</button>
+  </form>
+  {% if form.errors %}
+    <div class="alert alert-danger mt-3">
+      <ul>
+        {% for field, errors in form.errors.items %}
+          {% for error in errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+{% endblock %}

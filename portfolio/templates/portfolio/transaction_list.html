@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Lista de Transacciones
+{% endblock %}
+{% load humanize %}
+
+{% block content %}
+  <h1>Lista de Transacciones</h1>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Portafolio</th>
+        <th>Activo</th>
+        <th>Cantidad</th>
+        <th>Precio</th>
+        <th>Transado</th>
+        <th>Fecha</th>
+        <th>Tipo de Transacción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for transaction in transactions %}
+      <tr>
+        <td>{{ transaction.portfolio.name }}</td>
+        <td>{{ transaction.asset.name }}</td>
+<td class="{% if transaction.get_transaction_type_display == 'Compra' %}text-success{% else %}text-danger{% endif %}">
+          <strong>{{ transaction.quantity|intcomma }}</strong>
+        </td>        <td>${{ transaction.price|intcomma }}</td>
+        <td>${{ transaction.total_amount|floatformat:2|intcomma }}</td>
+        <td>{{ transaction.date }}</td>
+        <td>{{ transaction.get_transaction_type_display }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+
+
+          <!-- Botón para redirigir a la creación de transacciones -->
+          <form method="get" action="{% url 'create_transaction' %}">
+            <button type="submit" class="btn btn-primary">Crear Transacción</button>
+          </form>
+
+{% endblock %}
