@@ -220,7 +220,7 @@ def create_transaction_api(request):
         price_to_buy = cleaned_data["price_to_buy"]
 
         # Create the sell transaction
-        transaction_1, _ = Transaction.objects.get_or_create(
+        Transaction.objects.get_or_create(
             portfolio=portfolio,
             date=date,
             asset=asset_to_sell,
@@ -231,7 +231,7 @@ def create_transaction_api(request):
         )
 
         # Create the buy transaction
-        transaction_2, _ = Transaction.objects.get_or_create(
+        Transaction.objects.get_or_create(
             portfolio=portfolio,
             date=date,
             asset=asset_to_buy,
@@ -240,7 +240,6 @@ def create_transaction_api(request):
             price=price_to_buy,
             transaction_type="buy",
         )
-        print("Transaction created successfully")
 
         return Response(
             {"message": "Transaction created successfully"},
