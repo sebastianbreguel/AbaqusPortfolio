@@ -160,3 +160,37 @@ def data_In_Range( request):
     # Convertir los datos a DataFrame
 
     return JsonResponse(result, safe=False)
+
+
+
+        # df = pd.DataFrame(result)
+
+        # # Crear DataFrame para los pesos
+        # df_weights = pd.DataFrame([r["weights"] for r in result], index=df["date_id"])
+        # df_weights = df_weights.apply(pd.to_numeric, errors='coerce')  # Convertir los datos a numéricos
+
+        # # Generar gráficos
+        # plt.figure(figsize=(14, 7))
+
+        # # Gráfico de área apilada para w_{i,t}
+        # plt.subplot(2, 1, 1)
+        # df_weights.plot(kind='area', stacked=True, ax=plt.gca())
+        # plt.title('Evolución de los Pesos ($w_{i,t}$)')
+        # plt.xlabel('Fecha')
+        # print(df)
+        # plt.ylabel('Peso')
+
+        # # Gráfico de línea para V_t
+        # plt.subplot(2, 1, 2)
+        # plt.plot(df["date_id"], df["value"], label='V_t')
+        # plt.title('Evolución del Valor del Portafolio ($V_t$)')
+        # plt.xlabel('Fecha')
+        # plt.ylabel('Valor del Portafolio')
+        # plt.legend()
+
+        # # Guardar el gráfico en un objeto BytesIO
+        # buffer = io.BytesIO()
+        # plt.savefig(buffer, format='png')
+        # buffer.seek(0)
+
+        # return HttpResponse(buffer, content_type='image/png')
