@@ -55,23 +55,30 @@ Para esto, todo es gestonable mediante el uso de conda y poetry.
 5. Realiza las migraciones de la base de datos:
 
    ```bash
-   poetry run python manage.py migrate
+   python manage.py makemigration
 
    ```
 
-6. Crea un superusuario para acceder al admin de Django:
+6. Realiza las migraciones de la base de datos:
 
    ```bash
-   poetry run python manage.py createsuperuser
+   python manage.py migrate
+
    ```
 
-7. Inicia el servidor de desarrollo:
+7. Crea un superusuario para acceder al admin de Django:
 
    ```bash
-   poetry run python manage.py runserver
+   python manage.py createsuperuser
    ```
 
-8. Accede a la aplicación en tu navegador:
+8. Inicia el servidor de desarrollo:
+
+   ```bash
+   python manage.py runserver
+   ```
+
+9. Accede a la aplicación en tu navegador:
 
    ```bash
    http://127.0.0.1:8000/
