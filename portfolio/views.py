@@ -3,14 +3,14 @@ import plotly.express as px
 import requests
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .forms import TransactionForm, UploadFileForm
-from .models import Asset, Portfolio, Price, Tick, Transaction
+from .models import Portfolio, Price, Tick, Transaction
 from .services import FileUploadServices
 from .utils import calculate_portfolio_value, calculate_weights
 
@@ -42,8 +42,12 @@ def upload_file(request):
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
             service = FileUploadServices(file_obj=request.FILES["file"])
-            service.create()
-            return HttpResponseRedirect(reverse("upload_success"))
+            success, error = service.create()
+            if success:
+                return HttpResponseRedirect(reverse("upload_success"))
+            else:
+                form.add_error(None, error)  # Add the error to the form
+                return render(request, "portfolio/upload.html", {"form": form})
     else:
         form = UploadFileForm()
     return render(request, "portfolio/upload.html", {"form": form})
@@ -70,22 +74,14 @@ def data_In_Range(request):
             {"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST
         )
     portfolio = Portfolio.objects.get(name=f"Portfolio {portfolio_id}")
-
     ticks = Tick.objects.filter(portfolio=portfolio)
-
-    prices = Price.objects.filter(date=fecha_inicio)
-    prices_range = Price.objects.filter(date__range=[fecha_inicio, fecha_fin])
-    for price in prices_range:
-        date_id = price.date_id
-        portf_value = calculate_portfolio_value(ticks, prices)
-        weights = calculate_weights(prices, ticks, portf_value)
-
     transactions = Transaction.objects.filter(
         portfolio=portfolio, date__range=[fecha_inicio, fecha_fin]
     )
 
     initial_quantities = {tick.asset: tick.quantity for tick in ticks}
     result = []
+
     for date in pd.date_range(fecha_inicio, fecha_fin):
         adjusted_quantities = initial_quantities.copy()
 
@@ -94,8 +90,8 @@ def data_In_Range(request):
                 adjusted_quantities[transaction.asset] -= transaction.quantity
             else:
                 adjusted_quantities[transaction.asset] += transaction.quantity
-
         temp_ticks = []
+
         for asset, adjusted_quantity in adjusted_quantities.items():
             tick = Tick(asset=asset, portfolio=portfolio, quantity=adjusted_quantity)
             temp_ticks.append(tick)
@@ -178,6 +174,12 @@ def compare_data(request):
     return render(request, "portfolio/compare_data.html", context)
 
 
+def reset_transactions(request):
+    if request.method == "POST":
+        Transaction.objects.all().delete()
+        return redirect(reverse("transactions"))
+
+
 def transaction_list(request):
     transactions = Transaction.objects.all()
     for transaction in transactions:
@@ -196,7 +198,7 @@ def create_transaction(request):
         if form.is_valid():
             response = create_transaction_api(request)
             if response.status_code == status.HTTP_201_CREATED:
-                return render(request, "portfolio/transaction_list.html")
+                return HttpResponseRedirect(reverse("transactions"))
     else:
         form = TransactionForm()
     return render(request, "portfolio/transaction_form.html", {"form": form})

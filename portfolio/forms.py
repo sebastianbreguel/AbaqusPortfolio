@@ -1,16 +1,17 @@
 from django import forms
 
-from .models import Asset, Portfolio, Price, Transaction, Tick
+from .models import Asset, Portfolio, Price, Tick, Transaction
 
 
 class UploadFileForm(forms.Form):
-    file = forms.FileField(label='Selecciona un archivo')
+    file = forms.FileField(label="Selecciona un archivo")
 
     def clean_file(self):
-        file = self.cleaned_data.get('file')
-        if not file.name.endswith('.xlsx'):
-            raise forms.ValidationError('El archivo debe tener una extensión .xlsx')
+        file = self.cleaned_data.get("file")
+        if not file.name.endswith(".xlsx"):
+            raise forms.ValidationError("El archivo debe tener una extensión .xlsx")
         return file
+
 
 class TransactionForm(forms.ModelForm):
     class Meta:
@@ -43,19 +44,23 @@ class TransactionForm(forms.ModelForm):
                 "El activo a comprar no puede ser el mismo que el activo a vender.",
             )
 
-
         if portfolio and asset_to_sell and value:
             try:
                 tick = Tick.objects.get(portfolio=portfolio, asset=asset_to_sell)
                 price = Price.objects.get(asset=asset_to_sell, date=date)
                 tick_value = tick.quantity * price.value
                 if value > tick_value:
-                    self.add_error('value', f"No puedes vender más de {round(tick_value,2)} del activo seleccionado.")
+                    self.add_error(
+                        "value",
+                        f"No puedes vender más de {round(tick_value,2)} del activo seleccionado.",
+                    )
 
             except Tick.DoesNotExist:
-                self.add_error('asset_to_sell', "El activo seleccionado no está disponible en el portafolio.")
+                self.add_error(
+                    "asset_to_sell",
+                    "El activo seleccionado no está disponible en el portafolio.",
+                )
 
-            
         if date and asset_to_sell:
             try:
                 price_to_sell = Price.objects.get(asset=asset_to_sell, date=date)

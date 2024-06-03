@@ -7,11 +7,7 @@ import pandas as pd
 from django.db import transaction
 
 from .models import Asset, Portfolio, Price, Tick
-from .utils import (
-    calculate_actives_cuantity,
-    calculate_portfolio_value,
-    calculate_weights,
-)
+from .utils import calculate_actives_cuantity
 
 
 class FileUploadServices:
@@ -34,9 +30,9 @@ class FileUploadServices:
             df_prices.rename(columns={"index": "date_id"}, inplace=True)
         except Exception as e:
             print(f"Error reading the Excel file: {e}")
-            return None, None
+            return None, None, str(f"Error reading the Excel file: {e}")
 
-        return df_weights, df_prices
+        return df_weights, df_prices, None
 
     def _prepare_data(self, df_weights, df_prices):
         portfolio_columns = [col for col in df_weights.columns if "portafolio" in col]
@@ -58,38 +54,45 @@ class FileUploadServices:
     @transaction.atomic
     def create(self):
         self._save_temp_file()
-        df_weights, df_prices = self._read_excel_file()
+        df_weights, df_prices, error = self._read_excel_file()
+        if error:
+            return False, error
         df_weights, df_prices, initial_date = self._prepare_data(df_weights, df_prices)
-
-        # Activos
-        assets = df_prices.columns[2:]
-        for asset_name in assets:
-            create_or_update_asset(asset_name)
-
-        # Portafolios
-        for portafolio in df_weights["portafolio"].unique():
-            create_or_update_portfolio(f"Portfolio {portafolio}")
-
-        # Precios
-        for _, row in df_prices.iterrows():
-            date = row["Dates"].strftime("%Y-%m-%d")
-            date_id = row["date_id"]
+        try:
+            # Activos
+            assets = df_prices.columns[2:]
             for asset_name in assets:
-                price = row[asset_name]
-                create_or_update_price(asset_name, date, date_id, price)
+                create_or_update_asset(asset_name)
 
-        # Ticks
-        for _, row in df_weights.iterrows():
-            date = row["Fecha"].strftime("%Y-%m-%d")
-            asset_name = row["activos"]
-            portfolio_name = f"Portfolio {row['portafolio']}"
-            weight = float(row["weight"])
-            price = Price.objects.get(asset__name=asset_name, date=initial_date)
-            portafolio = Portfolio.objects.get(name=portfolio_name)
-            quantity = calculate_actives_cuantity(weight, price, portafolio)
-            create_or_update_tick(asset_name, portfolio_name, date, quantity, weight)
+            # Portafolios
+            for portafolio in df_weights["portafolio"].unique():
+                create_or_update_portfolio(f"Portfolio {portafolio}")
 
-        return True
+            # Precios
+            for _, row in df_prices.iterrows():
+                date = row["Dates"].strftime("%Y-%m-%d")
+                date_id = row["date_id"]
+                for asset_name in assets:
+                    price = row[asset_name]
+                    create_or_update_price(asset_name, date, date_id, price)
+
+            # Ticks
+            for _, row in df_weights.iterrows():
+                date = row["Fecha"].strftime("%Y-%m-%d")
+                asset_name = row["activos"]
+                portfolio_name = f"Portfolio {row['portafolio']}"
+                weight = float(row["weight"])
+                price = Price.objects.get(asset__name=asset_name, date=initial_date)
+                portafolio = Portfolio.objects.get(name=portfolio_name)
+                quantity = calculate_actives_cuantity(weight, price, portafolio)
+                create_or_update_tick(
+                    asset_name, portfolio_name, date, quantity, weight
+                )
+
+        except Exception as e:
+            return False, f"Error creating the data: {e}"
+
+        return True, None
 
 
 def update_instance_fields(instance, data):

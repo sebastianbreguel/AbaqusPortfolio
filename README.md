@@ -42,7 +42,7 @@ Para esto, todo es gestonable mediante el uso de conda y poetry.
 3. Instala Poetry si no lo tienes instalado:
 
    ```bash
-   pip install poetry
+   conda install poetry
    ```
 
 4. Instala las dependencias con Poetry:

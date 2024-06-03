@@ -6,6 +6,7 @@ from .views import (
     create_transaction_api,
     data_In_Range,
     index,
+    reset_transactions,
     transaction_list,
     upload_file,
     upload_success,
@@ -19,5 +20,6 @@ urlpatterns = [
     path("api/portfolio-data/", data_In_Range, name="portfolio_data"),
     path("transactions/", transaction_list, name="transactions"),
     path("transactions/new/", create_transaction, name="create_transaction"),
+    path("transactions/reset/", reset_transactions, name="reset_transactions"),
     path("api/transactions/", create_transaction_api, name="create_transaction_api"),
 ]
