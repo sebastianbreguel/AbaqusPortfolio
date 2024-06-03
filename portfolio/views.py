@@ -1,15 +1,23 @@
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
+from django.db.models import F, Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .forms import UploadFileForm
 from .models import Asset, Holding, Portfolio, Price, Weight
-from .utils import calculate_actives_cuantity
+from .utils import (
+    calculate_actives_cuantity,
+    calculate_portfolio_value,
+    calculate_weights,
+)
 
 # Create your views here.
 
@@ -117,3 +125,43 @@ def upload_file(request):
 
 def upload_success(request):
     return render(request, "portfolio/upload_success.html")
+
+
+class PortfolioDataView(APIView):
+
+    _initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
+
+    def get(self, request):
+        """
+        request:
+        - fecha_inicio: value of the date that we want to calculate the weights
+        - fecha_fin: value of the date that we want to calculate the weights
+        - portfolio: number of portafolio
+        """
+        fecha_inicio = request.query_params.get("fecha_inicio")
+        fecha_fin = request.query_params.get("fecha_fin")
+        portfolio_id = int(request.query_params.get("portfolio"))
+
+        if not fecha_inicio or not fecha_fin or not portfolio_id:
+            return Response(
+                {"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        portfolio = Portfolio.objects.get(name=f"Portfolio {portfolio_id}")
+        Quantities = Holding.objects.filter(portfolio=portfolio)
+        prices = Price.objects.filter(date=fecha_inicio)
+
+        result = []
+        for date in pd.date_range(fecha_inicio, fecha_fin):
+            prices = Price.objects.filter(date=date)
+            date_id = prices[0].date_id
+            portf_value = calculate_portfolio_value(Quantities, prices)
+            weights = calculate_weights(prices, Quantities, portf_value)
+            result.append(
+                {
+                    "date_id": date_id,
+                    "portfolio": portfolio_id,
+                    "value": portf_value,
+                    "weights": weights,
+                }
+            )
+        return Response(result)
