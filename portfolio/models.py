@@ -14,7 +14,7 @@ class Portfolio(models.Model):
     value = models.DecimalField(max_digits=25, decimal_places=2, default=1000000000)
 
     def __str__(self):
-        return f" porta{self.name}"
+        return f"{self.name}"
 
     def clean(self):
         if self.value < 0:
@@ -34,7 +34,7 @@ class Price(models.Model):
         return f"{self.asset.name} - {self.date} - ${self.value}"
 
     def clean(self):
-        if self.price < 0:
+        if self.value < 0:
             raise ValidationError("Price must be greater than 0")
 
 

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Bienvenido a la Aplicación de Portafolio
+{% endblock %}
+
+{% block content %}
+  <h1>Bienvenido a la Aplicación de Portafolio</h1>
+  <nav>
+    <ul>
+      <li><a href="{% url 'upload_file' %}">Subir Archivo</a></li>
+    </ul>
+  </nav>
+
+  {% if Portfolios %}
+  <!-- Resumen del portafolio: nombre y valor -->
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for portfolio in Portfolios %}
+      <tr>
+        <td>{{ portfolio.name }}</td>
+        <td>${{ portfolio.value }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No hay portafolios disponibles.</p>
+  {% endif %}
+{% endblock %}

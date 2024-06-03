@@ -1,24 +1,24 @@
+import io
 import os
 import tempfile
 from datetime import datetime
-import io
+
 import matplotlib
 
-matplotlib.use('Agg')  # Usar el backend 'Agg' para evitar problemas de GUI
+matplotlib.use("Agg")  # Usar el backend 'Agg' para evitar problemas de GUI
 import matplotlib.pyplot as plt
 import pandas as pd
-from django.http import HttpResponse
-from rest_framework.decorators import api_view
-
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .forms import UploadFileForm
 from .models import Asset, Holding, Portfolio, Price
+from .services import FileUploadServices
 from .utils import (
     calculate_actives_cuantity,
     calculate_portfolio_value,
@@ -28,83 +28,97 @@ from .utils import (
 # Create your views here.
 
 
-def handle_uploaded_file(f):
+# def handle_uploaded_file(f):
 
-    temp_dir = tempfile.gettempdir()
-    file_path = os.path.join(temp_dir, "uploaded_file.xlsx")
-    with open(file_path, "wb+") as destination:
-        for chunk in f.chunks():
-            destination.write(chunk)
-    try:
-        df_weights = pd.read_excel(file_path, sheet_name="weights")
-        df_prices = pd.read_excel(file_path, sheet_name="Precios")
-        df_prices.reset_index(drop=False, inplace=True)
-        df_prices.rename(columns={"index": "date_id"}, inplace=True)
+#     temp_dir = tempfile.gettempdir()
+#     file_path = os.path.join(temp_dir, "uploaded_file.xlsx")
+#     with open(file_path, "wb+") as destination:
+#         for chunk in f.chunks():
+#             destination.write(chunk)
+#     try:
+#         df_weights = pd.read_excel(file_path, sheet_name="weights")
+#         df_prices = pd.read_excel(file_path, sheet_name="Precios")
+#         df_prices.reset_index(drop=False, inplace=True)
+#         df_prices.rename(columns={"index": "date_id"}, inplace=True)
 
-    except Exception as e:
-        print(f"Error reading the Excel file: {e}")
-        return None, None
+#     except Exception as e:
+#         print(f"Error reading the Excel file: {e}")
+#         return None, None
 
-    portfolio_columns = [col for col in df_weights.columns if "portafolio" in col]
-    portfolio_columns = {col: col.split(" ")[1] for col in portfolio_columns}
-    initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
+#     portfolio_columns = [col for col in df_weights.columns if "portafolio" in col]
+#     portfolio_columns = {col: col.split(" ")[1] for col in portfolio_columns}
+#     initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
 
-    df_weights = df_weights.melt(
-        id_vars=["Fecha", "activos"],
-        value_vars=[f"{portfolio}" for portfolio in portfolio_columns.keys()],
-        var_name="portafolio",
-        value_name="weight",
-    )
+#     df_weights = df_weights.melt(
+#         id_vars=["Fecha", "activos"],
+#         value_vars=[f"{portfolio}" for portfolio in portfolio_columns.keys()],
+#         var_name="portafolio",
+#         value_name="weight",
+#     )
 
-    df_weights["portafolio"] = df_weights["portafolio"].apply(
-        lambda x: portfolio_columns[x]
-    )
+#     df_weights["portafolio"] = df_weights["portafolio"].apply(
+#         lambda x: portfolio_columns[x]
+#     )
 
-    # Activos
-    assets = df_prices.columns[2:]
-    for asset_name in assets:
-        Asset.objects.get_or_create(name=asset_name)
+#     # Activos
+#     assets = df_prices.columns[2:]
+#     for asset_name in assets:
+#         Asset.objects.get_or_create(name=asset_name)
 
-    # Portafolios
-    for portafolio in df_weights["portafolio"].unique():
-        Portfolio.objects.get_or_create(name=f"Portfolio {portafolio}")
+#     # Portafolios
+#     for portafolio in df_weights["portafolio"].unique():
+#         Portfolio.objects.get_or_create(name=f"Portfolio {portafolio}")
 
-    # Precios
-    for _, row in df_prices.iterrows():
-        date = row["Dates"]
-        date = date.strftime("%Y-%m-%d")
-        date_id = row["date_id"]
-        for asset_name in assets:
-            asset = Asset.objects.get(name=asset_name)
-            price = row[asset_name]
-            Price.objects.get_or_create(
-                asset=asset, date=date, value=price, date_id=date_id
-            )
+#     # Precios
+#     for _, row in df_prices.iterrows():
+#         date = row["Dates"]
+#         date = date.strftime("%Y-%m-%d")
+#         date_id = row["date_id"]
+#         for asset_name in assets:
+#             asset = Asset.objects.get(name=asset_name)
+#             price = row[asset_name]
+#             Price.objects.get_or_create(
+#                 asset=asset, date=date, value=price, date_id=date_id
+#             )
 
-    # Holdings
-    for _, row in df_weights.iterrows():
-        date = row["Fecha"]
-        date = date.strftime("%Y-%m-%d")
-        asset = Asset.objects.get(name=row["activos"])
-        price = Price.objects.get(asset=asset, date=initial_date)
-        portfolio = Portfolio.objects.get(name=f'Portfolio {row["portafolio"]}')
-        weight = float(row["weight"])
+#     # Holdings
+#     for _, row in df_weights.iterrows():
+#         date = row["Fecha"]
+#         date = date.strftime("%Y-%m-%d")
+#         asset = Asset.objects.get(name=row["activos"])
+#         price = Price.objects.get(asset=asset, date=initial_date)
+#         portfolio = Portfolio.objects.get(name=f'Portfolio {row["portafolio"]}')
+#         weight = float(row["weight"])
 
-        quantity = calculate_actives_cuantity(weight, price, portfolio)
-        Holding.objects.create(
-            asset=asset,
-            portfolio=portfolio,
-            date=initial_date,
-            quantity=quantity,
-            weight=weight,
-        )
+#         quantity = calculate_actives_cuantity(weight, price.value, portfolio)
+#         Holding.objects.create(
+#             asset=asset,
+#             portfolio=portfolio,
+#             date=initial_date,
+#             quantity=quantity,
+#             weight=weight,
+#         )
+
+
+def index(request):
+    # Verificar si hay datos en la base de datos
+    have_Portfolio = (
+        Portfolio.objects.exists()
+    )  # Suponiendo que si hay activos, los datos están subidos
+
+    if have_Portfolio:
+        Portfolios = Portfolio.objects.all()
+
+    
+    return render(request, "portfolio/index.html", {"Portfolios": Portfolios})
 
 
 def upload_file(request):
     if request.method == "POST":
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            handle_uploaded_file(request.FILES["file"])
+            service = FileUploadServices(file_obj=request.FILES["file"])
+            service.create()
             return HttpResponseRedirect(reverse("upload_success"))
     else:
         form = UploadFileForm()
@@ -115,9 +129,8 @@ def upload_success(request):
     return render(request, "portfolio/upload_success.html")
 
 
-
-@api_view(['GET'])
-def data_In_Range( request):
+@api_view(["GET"])
+def data_In_Range(request):
     """
     request:
     - fecha_inicio: value of the date that we want to calculate the weights
@@ -157,40 +170,37 @@ def data_In_Range( request):
                 "weights": weights,
             }
         )
-    # Convertir los datos a DataFrame
 
     return JsonResponse(result, safe=False)
 
+    # df = pd.DataFrame(result)
 
+    # # Crear DataFrame para los pesos
+    # df_weights = pd.DataFrame([r["weights"] for r in result], index=df["date_id"])
+    # df_weights = df_weights.apply(pd.to_numeric, errors='coerce')  # Convertir los datos a numéricos
 
-        # df = pd.DataFrame(result)
+    # # Generar gráficos
+    # plt.figure(figsize=(14, 7))
 
-        # # Crear DataFrame para los pesos
-        # df_weights = pd.DataFrame([r["weights"] for r in result], index=df["date_id"])
-        # df_weights = df_weights.apply(pd.to_numeric, errors='coerce')  # Convertir los datos a numéricos
+    # # Gráfico de área apilada para w_{i,t}
+    # plt.subplot(2, 1, 1)
+    # df_weights.plot(kind='area', stacked=True, ax=plt.gca())
+    # plt.title('Evolución de los Pesos ($w_{i,t}$)')
+    # plt.xlabel('Fecha')
+    # print(df)
+    # plt.ylabel('Peso')
 
-        # # Generar gráficos
-        # plt.figure(figsize=(14, 7))
+    # # Gráfico de línea para V_t
+    # plt.subplot(2, 1, 2)
+    # plt.plot(df["date_id"], df["value"], label='V_t')
+    # plt.title('Evolución del Valor del Portafolio ($V_t$)')
+    # plt.xlabel('Fecha')
+    # plt.ylabel('Valor del Portafolio')
+    # plt.legend()
 
-        # # Gráfico de área apilada para w_{i,t}
-        # plt.subplot(2, 1, 1)
-        # df_weights.plot(kind='area', stacked=True, ax=plt.gca())
-        # plt.title('Evolución de los Pesos ($w_{i,t}$)')
-        # plt.xlabel('Fecha')
-        # print(df)
-        # plt.ylabel('Peso')
+    # # Guardar el gráfico en un objeto BytesIO
+    # buffer = io.BytesIO()
+    # plt.savefig(buffer, format='png')
+    # buffer.seek(0)
 
-        # # Gráfico de línea para V_t
-        # plt.subplot(2, 1, 2)
-        # plt.plot(df["date_id"], df["value"], label='V_t')
-        # plt.title('Evolución del Valor del Portafolio ($V_t$)')
-        # plt.xlabel('Fecha')
-        # plt.ylabel('Valor del Portafolio')
-        # plt.legend()
-
-        # # Guardar el gráfico en un objeto BytesIO
-        # buffer = io.BytesIO()
-        # plt.savefig(buffer, format='png')
-        # buffer.seek(0)
-
-        # return HttpResponse(buffer, content_type='image/png')
+    # return HttpResponse(buffer, content_type='image/png')
