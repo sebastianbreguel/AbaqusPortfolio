@@ -4,8 +4,13 @@ from .models import Asset, Portfolio, Price, Transaction, Tick
 
 
 class UploadFileForm(forms.Form):
-    file = forms.FileField()
+    file = forms.FileField(label='Selecciona un archivo')
 
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if not file.name.endswith('.xlsx'):
+            raise forms.ValidationError('El archivo debe tener una extensión .xlsx')
+        return file
 
 class TransactionForm(forms.ModelForm):
     class Meta:
@@ -46,7 +51,7 @@ class TransactionForm(forms.ModelForm):
                 tick_value = tick.quantity * price.value
                 if value > tick_value:
                     self.add_error('value', f"No puedes vender más de {round(tick_value,2)} del activo seleccionado.")
-                    
+
             except Tick.DoesNotExist:
                 self.add_error('asset_to_sell', "El activo seleccionado no está disponible en el portafolio.")
 

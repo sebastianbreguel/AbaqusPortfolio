@@ -9,7 +9,7 @@
         {% endblock %}
     </title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <style>
         .navbar-custom {
@@ -18,8 +18,15 @@
         .navbar-custom .navbar-brand {
             color: #000000; /* Black color for the logo text */
         }
-        .navbar-custom .navbar-brand:hover {
-            color: #000000; /* Ensure the logo text stays black on hover */
+        .navbar-custom .navbar-nav .nav-link {
+            color: #000000; /* Black color for the nav links */
+        }
+        .navbar-custom .navbar-nav .nav-item.active .nav-link {
+            font-size: 1.2rem; /* Increase font size for active nav link */
+        }
+        .btn-primary {
+            background-color: #000000; /* Black background for buttons */
+            border-color: #000000; /* Black border for buttons */
         }
     </style>
 </head>
@@ -28,19 +35,18 @@
         <a class="navbar-brand" href="{% url 'index' %}">My Abaqus Tracker</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
-                  <div class="collapse navbar-collapse" id="navbarNav">
-      </div>
         </button>
-        <ul class="navbar-nav">
-          <li class="nav-item active">
-            <a class="nav-link" href="{% url 'transactions' %}">Transacciones</a>
-          </li>
-        </ul>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item active">
+                    <a class="nav-link" href="{% url 'transactions' %}">Transacciones</a>
+                </li>
+            </ul>
+        </div>
     </nav>
     <div class="container">{% block content %}{% endblock %}</div>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </body>
 </html>

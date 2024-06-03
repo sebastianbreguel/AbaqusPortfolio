@@ -1,8 +1,5 @@
 {% extends "base.html" %}
 
-{% block title %}
-  Crear Transacción
-{% endblock %}
 
 {% block content %}
   <h1>Crear Nueva Transacción</h1>
@@ -25,7 +22,7 @@
       {{ form.asset_to_buy }}
     </div>
     <div class="form-group">
-      <label for="value">Cantidad a Comprar/Vender:</label>
+      <label for="value">Cantidad a Comprar/Vender (en $):</label>
       {{ form.value }}
     </div>
     <button type="submit" class="btn btn-primary">Guardar</button>

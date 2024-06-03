@@ -1,14 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}
-  Subir Archivo
-{% endblock %}
-
 {% block content %}
   <h1>Subir Archivo Excel</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    {{ form.as_p }}
+    <div class="form-group">
+      {{ form.file.label_tag }}
+      {{ form.file }}
+      {% if form.file.errors %}
+        <div class="alert alert-danger">
+          {% for error in form.file.errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
     <button type="submit" class="btn btn-primary">Subir</button>
   </form>
 {% endblock %}
