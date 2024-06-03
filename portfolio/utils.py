@@ -1,4 +1,6 @@
 from decimal import Decimal
+
+
 def calculate_actives_cuantity(weight, price, portafolio):
     value = portafolio.value
     quantity = (Decimal(weight) * value) / price.value

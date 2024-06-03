@@ -44,7 +44,7 @@ class Holding(models.Model):
     quantity = models.DecimalField(max_digits=20, decimal_places=4)
     date = models.DateField()
     weight = models.DecimalField(max_digits=7, decimal_places=6, default=0)
-    
+
     class Meta:
         unique_together = ("asset", "date", "portfolio")
 
