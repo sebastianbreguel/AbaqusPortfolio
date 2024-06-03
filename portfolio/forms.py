@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Asset, Portfolio, Price, Transaction
+from .models import Asset, Portfolio, Price, Transaction, Tick
 
 
 class UploadFileForm(forms.Form):
@@ -27,10 +27,30 @@ class TransactionForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         date = cleaned_data.get("date")
+        portfolio = cleaned_data.get("portfolio")
         asset_to_sell = cleaned_data.get("asset_to_sell")
         asset_to_buy = cleaned_data.get("asset_to_buy")
         value = cleaned_data.get("value")
 
+        if asset_to_buy == asset_to_sell:
+            self.add_error(
+                "asset_to_buy",
+                "El activo a comprar no puede ser el mismo que el activo a vender.",
+            )
+
+
+        if portfolio and asset_to_sell and value:
+            try:
+                tick = Tick.objects.get(portfolio=portfolio, asset=asset_to_sell)
+                price = Price.objects.get(asset=asset_to_sell, date=date)
+                tick_value = tick.quantity * price.value
+                if value > tick_value:
+                    self.add_error('value', f"No puedes vender más de {round(tick_value,2)} del activo seleccionado.")
+                    
+            except Tick.DoesNotExist:
+                self.add_error('asset_to_sell', "El activo seleccionado no está disponible en el portafolio.")
+
+            
         if date and asset_to_sell:
             try:
                 price_to_sell = Price.objects.get(asset=asset_to_sell, date=date)
