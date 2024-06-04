@@ -1,10 +1,12 @@
-import requests
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
+import requests
 
 from .common import comparation_plot
 from .forms import TransactionForm, UploadFileForm
