@@ -1,6 +1,4 @@
-import pandas as pd
 import requests
-from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -8,10 +6,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .common import calculate_portfolio_value, calculate_weights, comparation_plot
+from .common import  comparation_plot
 from .forms import TransactionForm, UploadFileForm
-from .models import Portfolio, Price, Tick, Transaction
-from .services import FileUploadServices
+from .models import Portfolio, Price, Transaction
+from .services import create_transaction_api, get_data_in_range, FileUploadServices
 
 
 def index(request):
@@ -55,56 +53,20 @@ def upload_success(request):
 
 
 @api_view(["GET"])
-def data_In_Range(request):
-    """
-    request:
-    - fecha_inicio: value of the date that we want to calculate the weights
-    - fecha_fin: value of the date that we want to calculate the weights
-    - portfolio: number of portafolio
-    """
+def data_in_range(request):
     fecha_inicio = request.query_params.get("fecha_inicio")
     fecha_fin = request.query_params.get("fecha_fin")
-    portfolio_id = int(request.query_params.get("portfolio"))
+    portfolio_id = request.query_params.get("portfolio")
 
     if not fecha_inicio or not fecha_fin or not portfolio_id:
-        return Response(
-            {"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST
-        )
-    portfolio = Portfolio.objects.get(name=f"Portfolio {portfolio_id}")
-    ticks = Tick.objects.filter(portfolio=portfolio)
-    transactions = Transaction.objects.filter(
-        portfolio=portfolio, date__range=[fecha_inicio, fecha_fin]
-    )
+        return Response({"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST)
 
-    initial_quantities = {tick.asset: tick.quantity for tick in ticks}
-    result = []
-
-    for date in pd.date_range(fecha_inicio, fecha_fin):
-        adjusted_quantities = initial_quantities.copy()
-
-        for txn in transactions.filter(date__lte=date):
-            if txn.transaction_type == "sell":
-                adjusted_quantities[txn.asset] -= txn.quantity
-            else:
-                adjusted_quantities[txn.asset] += txn.quantity
-        temp_ticks = []
-
-        for asset, adjusted_quantity in adjusted_quantities.items():
-            tick = Tick(asset=asset, portfolio=portfolio, quantity=adjusted_quantity)
-            temp_ticks.append(tick)
-
-        prices = Price.objects.filter(date=date)
-        portfolio_value = calculate_portfolio_value(temp_ticks, prices)
-        weights = calculate_weights(prices, temp_ticks, portfolio_value)
-
-        result.append(
-            {
-                "date": date.strftime("%Y-%m-%d"),
-                "portfolio": portfolio_id,
-                "value": portfolio_value,
-                "weights": weights,
-            }
-        )
+    try:
+        result = get_data_in_range(fecha_inicio, fecha_fin, portfolio_id)
+    except Portfolio.DoesNotExist:
+        return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     return JsonResponse(result, safe=False)
 
@@ -159,8 +121,10 @@ def transaction_list(request):
     )
 
 
-@transaction.atomic
 def create_transaction(request):
+    min_date = Price.objects.values_list("date", flat=True).order_by("date").first().strftime("%Y-%m-%d")
+    max_date = Price.objects.values_list("date", flat=True).order_by("-date").first().strftime("%Y-%m-%d")
+
 
     if request.method == "POST":
         form = TransactionForm(request.POST)
@@ -170,48 +134,12 @@ def create_transaction(request):
                 return HttpResponseRedirect(reverse("transactions"))
     else:
         form = TransactionForm()
-    return render(request, "portfolio/transaction_form.html", {"form": form})
 
+    
+    form.fields['date'].widget.attrs.update({
+        'min': min_date,
+        'max': max_date,
+        'value': min_date  # Establecer el valor predeterminado como la fecha mínima
+    })
 
-@api_view(["POST"])
-def create_transaction_api(request):
-    form = TransactionForm(request.data)
-    if form.is_valid():
-        cleaned_data = form.cleaned_data
-        portfolio = cleaned_data["portfolio"]
-        date = cleaned_data["date"]
-        asset_to_sell = cleaned_data["asset_to_sell"]
-        asset_to_buy = cleaned_data["asset_to_buy"]
-        value = cleaned_data["value"]
-        quantity_to_sell = cleaned_data["quantity_to_sell"]
-        quantity_to_buy = cleaned_data["quantity_to_buy"]
-        price_to_sell = cleaned_data["price_to_sell"]
-        price_to_buy = cleaned_data["price_to_buy"]
-
-        # Create the sell transaction
-        Transaction.objects.get_or_create(
-            portfolio=portfolio,
-            date=date,
-            asset=asset_to_sell,
-            quantity=quantity_to_sell,
-            value=value,
-            price=price_to_sell,
-            transaction_type="sell",
-        )
-
-        # Create the buy transaction
-        Transaction.objects.get_or_create(
-            portfolio=portfolio,
-            date=date,
-            asset=asset_to_buy,
-            quantity=quantity_to_buy,
-            value=value,
-            price=price_to_buy,
-            transaction_type="buy",
-        )
-
-        return Response(
-            {"message": "Transaction created successfully"},
-            status=status.HTTP_201_CREATED,
-        )
-    return Response({"errors": form.errors}, status=status.HTTP_400_BAD_REQUEST)
+    return render(request, "portfolio/transaction_form.html", {"form": form, "min_date": min_date, "max_date": max_date})

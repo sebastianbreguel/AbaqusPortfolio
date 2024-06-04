@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1>El archivo se ha subido y procesado con éxito.</h1>
+
+  <div class="container mt-4">
+    <h1 class="text-center y underline">El archivo se ha subido y procesado con éxito.</h1>
   <a href="{% url 'upload_file' %}" class="btn btn-success">Subir otro archivo</a>
   <a href="{% url 'index' %}" class="btn btn-primary">Ir al inicio</a>
+  </div>  
 {% endblock %}

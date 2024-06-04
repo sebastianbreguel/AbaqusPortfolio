@@ -5,9 +5,13 @@ from decimal import Decimal
 
 import pandas as pd
 from django.db import transaction
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
-from .common import calculate_actives_cuantity
-from .models import Asset, Portfolio, Price, Tick
+from .common import calculate_actives_cuantity, calculate_portfolio_value, calculate_weights
+from .forms import TransactionForm
+from .models import Asset, Portfolio, Price, Tick, Transaction
 
 
 class FileUploadServices:
@@ -160,3 +164,91 @@ def create_or_update_tick(asset_name, portfolio_name, date, quantity, weight):
     if not created:
         tick = update_instance_fields(tick, {"quantity": quantity, "weight": weight})
     return tick
+
+
+
+
+@api_view(["POST"])
+def create_transaction_api(request):
+    form = TransactionForm(request.data)
+    if form.is_valid():
+        cleaned_data = form.cleaned_data
+        portfolio = cleaned_data["portfolio"]
+        date = cleaned_data["date"]
+        asset_to_sell = cleaned_data["asset_to_sell"]
+        asset_to_buy = cleaned_data["asset_to_buy"]
+        value = cleaned_data["value"]
+        quantity_to_sell = cleaned_data["quantity_to_sell"]
+        quantity_to_buy = cleaned_data["quantity_to_buy"]
+        price_to_sell = cleaned_data["price_to_sell"]
+        price_to_buy = cleaned_data["price_to_buy"]
+
+        # Create the sell transaction
+        Transaction.objects.get_or_create(
+            portfolio=portfolio,
+            date=date,
+            asset=asset_to_sell,
+            quantity=quantity_to_sell,
+            value=value,
+            price=price_to_sell,
+            transaction_type="sell",
+        )
+
+        # Create the buy transaction
+        Transaction.objects.get_or_create(
+            portfolio=portfolio,
+            date=date,
+            asset=asset_to_buy,
+            quantity=quantity_to_buy,
+            value=value,
+            price=price_to_buy,
+            transaction_type="buy",
+        )
+
+        return Response(
+            {"message": "Transaction created successfully"},
+            status=status.HTTP_201_CREATED,
+        )
+    return Response({"errors": form.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@transaction.atomic
+def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
+    portfolio = Portfolio.objects.get(name=f"Portfolio {portfolio_id}")
+    ticks = Tick.objects.filter(portfolio=portfolio)
+    transactions = Transaction.objects.filter(
+        portfolio=portfolio, date__range=[fecha_inicio, fecha_fin]
+    )
+
+    initial_quantities = {tick.asset: tick.quantity for tick in ticks}
+    result = []
+
+    for date in pd.date_range(fecha_inicio, fecha_fin):
+        adjusted_quantities = initial_quantities.copy()
+
+        for txn in transactions.filter(date__lte=date):
+            if txn.transaction_type == "sell":
+                adjusted_quantities[txn.asset] -= txn.quantity
+            else:
+                adjusted_quantities[txn.asset] += txn.quantity
+        temp_ticks = []
+
+        for asset, adjusted_quantity in adjusted_quantities.items():
+            tick = Tick(asset=asset, portfolio=portfolio, quantity=adjusted_quantity)
+            temp_ticks.append(tick)
+
+        prices = Price.objects.filter(date=date)
+        portfolio_value = calculate_portfolio_value(temp_ticks, prices)
+        weights = calculate_weights(prices, temp_ticks, portfolio_value)
+
+        result.append(
+            {
+                "date": date.strftime("%Y-%m-%d"),
+                "portfolio": portfolio_id,
+                "value": portfolio_value,
+                "weights": weights,
+            }
+        )
+
+    return result

@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 
 {% load humanize %}
-
 {% block content %}
-  <h1>Lista de Transacciones</h1>
+
+  <div class="container mt-4">
+    <h1 class="text-center y underline">Lista de Transacciones</h1>
 
   <form method="post" action="{% url 'reset_transactions' %}">
     {% csrf_token %}
@@ -50,5 +51,5 @@
           <form method="get" action="{% url 'create_transaction' %}">
             <button type="submit" class="btn btn-primary">Crear Transacción</button>
           </form>
-
+</div>
 {% endblock %}

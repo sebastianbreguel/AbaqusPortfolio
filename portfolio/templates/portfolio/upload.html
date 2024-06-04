@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1>Subir Archivo Excel</h1>
+
+  <div class="container mt-4">
+    <h1 class="text-center y underline">Subir Archivo Excel</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="form-group">
@@ -17,4 +19,5 @@
     </div>
     <button type="submit" class="btn btn-primary">Subir</button>
   </form>
+  </div>  
 {% endblock %}

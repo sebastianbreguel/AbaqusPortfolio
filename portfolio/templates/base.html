@@ -10,6 +10,7 @@
     </title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <style>
         .navbar-custom {
@@ -28,10 +29,41 @@
             background-color: #000000; /* Black background for buttons */
             border-color: #000000; /* Black border for buttons */
         }
+        body {
+            padding-top: 70px; /* Add padding to prevent content from being hidden behind the fixed navbar */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            flex: 1;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px 0;
+            text-align: center;
+            border-top: 1px solid #e7e7e7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .footer-content {
+            display: flex;
+            align-items: center;
+        }
+        .footer .social-icons a {
+            color: #000000;
+            margin-left: 10px;
+            font-size: 1.5rem;
+            text-decoration: none;
+        }
+        .footer .social-icons a:hover {
+            color: #0073b1; /* LinkedIn blue color */
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-custom">
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
         <a class="navbar-brand" href="{% url 'index' %}">My Abaqus Tracker</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -45,6 +77,18 @@
         </div>
     </nav>
     <div class="container">{% block content %}{% endblock %}</div>
+    
+    <footer class="footer">
+        <div class="footer-content">
+            <p style="margin: 0;">Hecho por Sebastián Breguel</p>
+            <div class="social-icons">
+                <a href="https://www.linkedin.com/in/sebastian-breguel/" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+    
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

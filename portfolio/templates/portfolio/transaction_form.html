@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 
-
 {% block content %}
-  <h1>Crear Nueva Transacción</h1>
+
+  <div class="container mt-4">
+    <h1 class="text-center y underline">Crear Nueva Transacción</h1>
   <form method="post">
     {% csrf_token %}
     <div class="form-group">
@@ -38,4 +39,7 @@
       </ul>
     </div>
   {% endif %}
+    </div>
+
+
 {% endblock %}

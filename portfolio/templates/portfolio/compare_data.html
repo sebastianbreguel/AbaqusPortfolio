@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 
-
 {% block content %}
-<h1>Información del Portafolio {{ portfolio_id }}</h1>
-  <h2>Valor Entre {{ fecha_inicio }} y {{ fecha_fin }}</h2>
-  <div>{{ value_plot|safe }}</div>
+  <div class="container mt-4">
+    <h1 class="text-center y underline">Información del Portafolio {{ portfolio_id }}</h1>
 
-  <h2>Pesos Entre {{ fecha_inicio }} y {{ fecha_fin }}</h2>
-  <div>{{ weights_plot|safe }}</div>
+    <h3 class="dot">Valor Entre {{ fecha_inicio }} y {{ fecha_fin }}</h3>
+    <div>{{ value_plot|safe }}</div>
+
+    <h3 class="dot">Pesos Entre {{ fecha_inicio }} y {{ fecha_fin }}</h3>
+    <div>{{ weights_plot|safe }}</div>
+  </div>
 {% endblock %}
