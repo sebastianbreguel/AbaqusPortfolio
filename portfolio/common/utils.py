@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+import pandas as pd
+import plotly.express as px
+
 
 def calculate_actives_cuantity(weight, price, portafolio):
     value = portafolio.value
@@ -24,3 +27,38 @@ def calculate_portfolio_value(quantities, prices):
         value += price * quantity.quantity
     value = round(value, 2)
     return value
+
+
+def comparation_plot(data):
+
+    dates = [entry["date"] for entry in data]
+    values = [entry["value"] for entry in data]
+    weights = [entry["weights"] for entry in data]
+
+    # Data preparation for weights plot
+    weights_df = pd.DataFrame(weights, index=dates)
+    weights_df = weights_df.apply(pd.to_numeric, errors="coerce").fillna(0)
+
+    # Plot portfolio values using Plotly
+    value_fig = px.line(x=dates, y=values, labels={"x": "Date", "y": "Value"})
+    value_fig.update_layout(
+        yaxis=dict(autorange=True, title="Valor", type="linear"),
+        xaxis=dict(title="Fecha"),
+    )
+    value_plot = value_fig.to_html(full_html=False)
+
+    # Plot weights as stacked area chart using Plotly
+    weights_df = weights_df.reset_index().melt(
+        id_vars=["index"], var_name="Asset", value_name="Weight"
+    )
+    weights_fig = px.area(weights_df, x="index", y="Weight", color="Asset")
+    weights_fig.update_layout(
+        xaxis=dict(type="category", categoryorder="category ascending")
+    )
+    weights_fig.update_layout(
+        yaxis=dict(autorange=True, title="Weight", type="linear"),
+        xaxis=dict(title="Fecha"),
+    )
+    weights_plot = weights_fig.to_html(full_html=False)
+
+    return value_plot, weights_plot

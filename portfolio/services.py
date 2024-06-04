@@ -6,8 +6,8 @@ from decimal import Decimal
 import pandas as pd
 from django.db import transaction
 
+from .common import calculate_actives_cuantity
 from .models import Asset, Portfolio, Price, Tick
-from .utils import calculate_actives_cuantity
 
 
 class FileUploadServices:

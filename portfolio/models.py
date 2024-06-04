@@ -74,3 +74,7 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.get_transaction_type_display()} de {self.asset.name}: {self.quantity} a un precio ${self.price} en {self.portfolio.name} el {self.date}"
+
+    def clean(self):
+        if self.quantity < 0:
+            raise ValidationError("Quantity must be greater than 0")

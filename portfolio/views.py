@@ -1,5 +1,4 @@
 import pandas as pd
-import plotly.express as px
 import requests
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -9,12 +8,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .common import calculate_portfolio_value, calculate_weights, comparation_plot
 from .forms import TransactionForm, UploadFileForm
 from .models import Portfolio, Price, Tick, Transaction
 from .services import FileUploadServices
-from .utils import calculate_portfolio_value, calculate_weights
-
-# from common.utils import calculate_portfolio_value, calculate_weights
 
 
 def index(request):
@@ -85,11 +82,11 @@ def data_In_Range(request):
     for date in pd.date_range(fecha_inicio, fecha_fin):
         adjusted_quantities = initial_quantities.copy()
 
-        for transaction in transactions.filter(date__lte=date):
-            if transaction.transaction_type == "sell":
-                adjusted_quantities[transaction.asset] -= transaction.quantity
+        for txn in transactions.filter(date__lte=date):
+            if txn.transaction_type == "sell":
+                adjusted_quantities[txn.asset] -= txn.quantity
             else:
-                adjusted_quantities[transaction.asset] += transaction.quantity
+                adjusted_quantities[txn.asset] += txn.quantity
         temp_ticks = []
 
         for asset, adjusted_quantity in adjusted_quantities.items():
@@ -134,35 +131,7 @@ def compare_data(request):
 
     data = response.json()
 
-    dates = [entry["date"] for entry in data]
-    values = [entry["value"] for entry in data]
-    weights = [entry["weights"] for entry in data]
-
-    # Data preparation for weights plot
-    weights_df = pd.DataFrame(weights, index=dates)
-    weights_df = weights_df.apply(pd.to_numeric, errors="coerce").fillna(0)
-
-    # Plot portfolio values using Plotly
-    value_fig = px.line(x=dates, y=values, labels={"x": "Date", "y": "Value"})
-    value_fig.update_layout(
-        yaxis=dict(autorange=True, title="Valor", type="linear"),
-        xaxis=dict(title="Fecha"),
-    )
-    value_plot = value_fig.to_html(full_html=False)
-
-    # Plot weights as stacked area chart using Plotly
-    weights_df = weights_df.reset_index().melt(
-        id_vars=["index"], var_name="Asset", value_name="Weight"
-    )
-    weights_fig = px.area(weights_df, x="index", y="Weight", color="Asset")
-    weights_fig.update_layout(
-        xaxis=dict(type="category", categoryorder="category ascending")
-    )
-    weights_fig.update_layout(
-        yaxis=dict(autorange=True, title="Weight", type="linear"),
-        xaxis=dict(title="Fecha"),
-    )
-    weights_plot = weights_fig.to_html(full_html=False)
+    value_plot, weights_plot = comparation_plot(data)
 
     context = {
         "value_plot": value_plot,
@@ -182,8 +151,8 @@ def reset_transactions(request):
 
 def transaction_list(request):
     transactions = Transaction.objects.all()
-    for transaction in transactions:
-        transaction.total_amount = transaction.quantity * transaction.price
+    for txn in transactions:
+        txn.total_amount = txn.quantity * txn.price
 
     return render(
         request, "portfolio/transaction_list.html", {"transactions": transactions}
