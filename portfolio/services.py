@@ -9,7 +9,11 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .common import calculate_actives_cuantity, calculate_portfolio_value, calculate_weights
+from .common import (
+    calculate_actives_cuantity,
+    calculate_portfolio_value,
+    calculate_weights,
+)
 from .forms import TransactionForm
 from .models import Asset, Portfolio, Price, Tick, Transaction
 
@@ -166,8 +170,6 @@ def create_or_update_tick(asset_name, portfolio_name, date, quantity, weight):
     return tick
 
 
-
-
 @api_view(["POST"])
 def create_transaction_api(request):
     form = TransactionForm(request.data)
@@ -210,7 +212,6 @@ def create_transaction_api(request):
             status=status.HTTP_201_CREATED,
         )
     return Response({"errors": form.errors}, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 @transaction.atomic

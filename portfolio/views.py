@@ -6,10 +6,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .common import  comparation_plot
+from .common import comparation_plot
 from .forms import TransactionForm, UploadFileForm
 from .models import Portfolio, Price, Transaction
-from .services import create_transaction_api, get_data_in_range, FileUploadServices
+from .services import FileUploadServices, create_transaction_api, get_data_in_range
 
 
 def index(request):
@@ -59,12 +59,16 @@ def data_in_range(request):
     portfolio_id = request.query_params.get("portfolio")
 
     if not fecha_inicio or not fecha_fin or not portfolio_id:
-        return Response({"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
     try:
         result = get_data_in_range(fecha_inicio, fecha_fin, portfolio_id)
     except Portfolio.DoesNotExist:
-        return Response({"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -122,9 +126,18 @@ def transaction_list(request):
 
 
 def create_transaction(request):
-    min_date = Price.objects.values_list("date", flat=True).order_by("date").first().strftime("%Y-%m-%d")
-    max_date = Price.objects.values_list("date", flat=True).order_by("-date").first().strftime("%Y-%m-%d")
-
+    min_date = (
+        Price.objects.values_list("date", flat=True)
+        .order_by("date")
+        .first()
+        .strftime("%Y-%m-%d")
+    )
+    max_date = (
+        Price.objects.values_list("date", flat=True)
+        .order_by("-date")
+        .first()
+        .strftime("%Y-%m-%d")
+    )
 
     if request.method == "POST":
         form = TransactionForm(request.POST)
@@ -135,11 +148,16 @@ def create_transaction(request):
     else:
         form = TransactionForm()
 
-    
-    form.fields['date'].widget.attrs.update({
-        'min': min_date,
-        'max': max_date,
-        'value': min_date  # Establecer el valor predeterminado como la fecha mínima
-    })
+    form.fields["date"].widget.attrs.update(
+        {
+            "min": min_date,
+            "max": max_date,
+            "value": min_date,  # Establecer el valor predeterminado como la fecha mínima
+        }
+    )
 
-    return render(request, "portfolio/transaction_form.html", {"form": form, "min_date": min_date, "max_date": max_date})
+    return render(
+        request,
+        "portfolio/transaction_form.html",
+        {"form": form, "min_date": min_date, "max_date": max_date},
+    )
