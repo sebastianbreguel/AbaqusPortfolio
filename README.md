@@ -9,13 +9,13 @@ My Abaqus Tracker es una aplicación Django para gestionar portafolios de invers
 - Registro de transacciones de compra y venta, de activos.
 - Comparacion del valor del portafolio y sus weights entre a traves del tiempo
 
-## Imagen de la base de datos
-
-![Descripción de la imagen](assets/DB.jpg)
-
 ### Consideraciones especiales tomadas
 
 - En la vista de comparacion, se da la opcion de comparar solamente los valores de un mismo portafolio.
+
+## Imagen de la base de datos
+
+![Descripción de la imagen](assets/DB.jpg)
 
 ## Manual de instalacion
 
