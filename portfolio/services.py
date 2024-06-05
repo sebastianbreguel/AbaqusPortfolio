@@ -218,6 +218,15 @@ def create_transaction_api(request):
 
 @transaction.atomic
 def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
+    """
+    inputs:
+    - start date
+    - end date
+    - portfolio ID
+
+    output:
+    - results: weights and values of the assets of the portfolio in the given range
+    """
     portfolio = Portfolio.objects.get(name=f"Portfolio {portfolio_id}")
     ticks = Tick.objects.filter(portfolio=portfolio)
     transactions = Transaction.objects.filter(

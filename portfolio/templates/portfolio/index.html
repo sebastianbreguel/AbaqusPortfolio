@@ -6,63 +6,66 @@
 
 {% block content %}
   <div class="container mt-4">
-    <h1 class="text-center y">Abaqus Portafolios Trackers</h1>
-    <nav class="mb-4">
-      <ul>
-        <li><a href="{% url 'upload_file' %}" class="btn btn-link">{% if Portfolios %} Actualizar/Agregar Portafolios {% else %} Subir un archivo {% endif%}</a></li>
-      </ul>
-    </nav>
+    <h1 class="text-center y underline">Abaqus Portafolios Trackers</h1>
 
     {% if Portfolios %}
-    <!-- Resumen del portafolio: nombre y valor -->
-    <h2>Resumen del Portafolio</h2>
-{% load humanize %}
+    <!-- Espacio adicional entre el título y el resumen -->
+    <div class="mt-4">
+      <!-- Resumen del portafolio: nombre y valor -->
+      <h2>Resumen del Portafolio</h2>
+      {% load humanize %}
 
-    <table class="table">
-      <thead class="thead-dark">
-    <tr>
-      <th>Nombre</th>
-      <th>Valor</th>        
-      </tr>
-    </thead>
-    <tbody>
-      {% for portfolio in Portfolios %}
-      <tr>
-        <td>{{ portfolio }}</td>
-        <td>${{ portfolio.value|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-        
-        
+      <table class="table">
+        <thead class="thead-dark">
+          <tr>
+            <th>Nombre</th>
+            <th>Valor</th>      
+          </tr>
+        </thead>
+        <tbody>
+          {% for portfolio in Portfolios %}
+          <tr>
+            <td>{{ portfolio }}</td>
+            <td>${{ portfolio.value|intcomma }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
     <!-- Botón para ir a la vista de comparación -->
-<form method="get" action="{% url 'compare_data' %}" class="mt-4">
-  <div class="form-row align-items-end">
-    <div class="form-group col-md-3">
-      <label for="portfolio">Portafolio:</label>
-      <select id="portfolio" name="portfolio" class="form-control">
-        {% for portfolio in Portfolios %}
-          <option value="{{ portfolio.id }}">{{ portfolio }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-group col-md-3">
-      <label for="fecha_inicio">Fecha Inicio:</label>
-      <input type="date" id="fecha_inicio" name="fecha_inicio" value="{{ min_date }}" required class="form-control" min="{{ min_date }}" max="{{ max_date }}">
-    </div>
-    <div class="form-group col-md-3">
-      <label for="fecha_fin">Fecha Fin:</label>
-      <input type="date" id="fecha_fin" name="fecha_fin" value="{{ max_date }}" required class="form-control" min="{{ min_date }}" max="{{ max_date }}">
-    </div>
-    <div class="form-group col-md-3">
-      <button type="submit" class="btn btn-primary">Comparar</button>
-    </div>
+    <form method="get" action="{% url 'compare_data' %}" class="mt-4">
+      <div class="form-row align-items-end">
+        <div class="form-group col-md-3">
+          <label for="portfolio">Portafolio:</label>
+          <select id="portfolio" name="portfolio" class="form-control">
+            {% for portfolio in Portfolios %}
+              <option value="{{ portfolio.id }}">{{ portfolio }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-3">
+          <label for="fecha_inicio">Fecha Inicio:</label>
+          <input type="date" id="fecha_inicio" name="fecha_inicio" value="{{ min_date }}" required class="form-control" min="{{ min_date }}" max="{{ max_date }}">
+        </div>
+        <div class="form-group col-md-3">
+          <label for="fecha_fin">Fecha Fin:</label>
+          <input type="date" id="fecha_fin" name="fecha_fin" value="{{ max_date }}" required class="form-control" min="{{ min_date }}" max="{{ max_date }}">
+        </div>
+        <div class="form-group col-md-3">
+          <button type="submit" class="btn btn-primary">Comparar</button>
+        </div>
+      </div>
+    </form>
+    {% else %}
+    <p>No hay portafolios disponibles.</p>
+    {% endif %}
+
+    <nav class="mb-4">
+          <a href="{% url 'upload_file' %}" class="btn btn-secondary btn-lg btn-block">
+            <i class="fas fa-upload"></i> 
+            {% if Portfolios %} Actualizar/Agregar Portafolios {% else %} Subir un archivo {% endif %}
+          </a>
+    </nav>
   </div>
-</form>
-  </div>
-  {% else %}
-  <p>No hay portafolios disponibles.</p>
-  {% endif %}
 {% endblock %}

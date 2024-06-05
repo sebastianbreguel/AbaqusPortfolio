@@ -28,7 +28,7 @@ class TransactionForm(forms.ModelForm):
         queryset=Asset.objects.all(), empty_label="Seleccione un activo a comprar"
     )
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
-    value = forms.IntegerField(min_value=0, required=False, label="Cantidad")
+    value = forms.DecimalField(min_value=0, required=False, label="Cantidad")
 
     def clean(self):
         cleaned_data = super().clean()
@@ -52,7 +52,7 @@ class TransactionForm(forms.ModelForm):
                 if value > tick_value:
                     self.add_error(
                         "value",
-                        f"No puedes vender más de {round(tick_value,2)} del activo seleccionado.",
+                        f"No puedes vender más de {round(tick_value, 2)} del activo seleccionado.",
                     )
 
             except Tick.DoesNotExist:

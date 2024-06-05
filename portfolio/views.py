@@ -20,6 +20,8 @@ def index(request):
 
     if have_Portfolio:
         Portfolios = Portfolio.objects.all()
+        for portfolio in Portfolios:
+            portfolio.value = round(portfolio.value, 1)
         available_dates = Price.objects.values_list("date", flat=True).distinct()
         available_dates = [date.strftime("%Y-%m-%d") for date in available_dates]
         min_date = available_dates[0]
@@ -119,9 +121,6 @@ def reset_transactions(request):
 
 def transaction_list(request):
     transactions = Transaction.objects.all()
-    for txn in transactions:
-        txn.total_amount = txn.quantity * txn.price
-
     return render(
         request, "portfolio/transaction_list.html", {"transactions": transactions}
     )
