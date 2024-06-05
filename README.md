@@ -15,9 +15,9 @@ My Abaqus Tracker es una aplicación Django para gestionar portafolios de invers
 
 - En la vista de comparacion, se da la opcion de comparar solamente los valores de un mismo portafolio. No entre dos portafolios distintos.
 
-## Imagen de la base de datos
+## Diagrama de la base de datos
 
-![Descripción de la imagen](assets/DB.jpg)
+![Descripción de la imagen](img/DB.jpg)
 
 ## Manual de instalacion
 
