@@ -15,6 +15,7 @@ from .common import (
     calculate_actives_cuantity,
     calculate_portfolio_value,
     calculate_weights,
+    get_minmax_range,
 )
 from .forms import TransactionForm
 from .models import Asset, Portfolio, Price, Tick, Transaction
@@ -264,3 +265,24 @@ def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
         )
 
     return result
+
+
+def validate_date_range(fecha_inicio, fecha_fin):
+
+    min_date, max_date = get_minmax_range()
+
+    try:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        min_date_dt = datetime.strptime(min_date, "%Y-%m-%d").date()
+        max_date_dt = datetime.strptime(max_date, "%Y-%m-%d").date()
+    except ValueError:
+        return False, "Invalid date format. Use YYYY-MM-DD."
+
+    if fecha_inicio_dt < min_date_dt or fecha_fin_dt > max_date_dt:
+        return (
+            False,
+            f"Invalid date range. Please select dates between {min_date} and {max_date}.",
+        )
+
+    return True, None

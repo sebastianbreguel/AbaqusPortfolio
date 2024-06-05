@@ -3,4 +3,5 @@ from .utils import (
     calculate_portfolio_value,
     calculate_weights,
     comparation_plot,
+    get_minmax_range,
 )

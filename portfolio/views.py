@@ -11,7 +11,13 @@ import requests
 from .common import comparation_plot
 from .forms import TransactionForm, UploadFileForm
 from .models import Portfolio, Price, Transaction
-from .services import FileUploadServices, create_transaction_api, get_data_in_range
+from .services import (
+    FileUploadServices,
+    create_transaction_api,
+    get_data_in_range,
+    get_minmax_range,
+    validate_date_range,
+)
 
 
 def index(request):
@@ -23,9 +29,8 @@ def index(request):
         for portfolio in Portfolios:
             portfolio.value = round(portfolio.value, 1)
         available_dates = Price.objects.values_list("date", flat=True).distinct()
-        available_dates = [date.strftime("%Y-%m-%d") for date in available_dates]
-        min_date = available_dates[0]
-        max_date = available_dates[-1]
+        min_date, max_date = get_minmax_range()
+
         context = {
             "Portfolios": Portfolios,
             "available_dates": available_dates,
@@ -62,6 +67,13 @@ def data_in_range(request):
     fecha_fin = request.query_params.get("fecha_fin")
     portfolio_id = request.query_params.get("portfolio")
 
+    is_valid, error_message = validate_date_range(fecha_inicio, fecha_fin)
+    if not is_valid:
+        return Response(
+            {"error": error_message},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if not fecha_inicio or not fecha_fin or not portfolio_id:
         return Response(
             {"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST
@@ -73,6 +85,7 @@ def data_in_range(request):
         return Response(
             {"error": "Portfolio not found"}, status=status.HTTP_404_NOT_FOUND
         )
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,18 +140,7 @@ def transaction_list(request):
 
 
 def create_transaction(request):
-    min_date = (
-        Price.objects.values_list("date", flat=True)
-        .order_by("date")
-        .first()
-        .strftime("%Y-%m-%d")
-    )
-    max_date = (
-        Price.objects.values_list("date", flat=True)
-        .order_by("-date")
-        .first()
-        .strftime("%Y-%m-%d")
-    )
+    min_date, max_date = get_minmax_range()
 
     if request.method == "POST":
         form = TransactionForm(request.POST)

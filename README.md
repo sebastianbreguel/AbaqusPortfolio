@@ -5,13 +5,15 @@ My Abaqus Tracker es una aplicación Django para gestionar portafolios de invers
 ## Características
 
 - Se puede subir un archivo .xslx, que permite agrergar/actualizar un portafolio. Este debe contener los precios de los activos y los weights de n portafolios, para una fecha.
-- La API nos entregara los valores de los portafolios y los weights de los activos entre dos fechas para un portafolio en especifico
+- La API nos entregara los valores de los portafolios y los weights de los activos entre dos fechas para un portafolio en especifico.
 - Registro de transacciones de compra y venta, de activos.
+- Se permite el reinicio de todas transacciones.
 - Comparacion del valor del portafolio y sus weights entre a traves del tiempo
+- Los formularios que tienen fechas, tienen la validacion de la primera fecha de precio y final, ademas de las transacciones no pueden ser echas por un monto mayor al que tiene el portafolio.
 
 ### Consideraciones especiales tomadas
 
-- En la vista de comparacion, se da la opcion de comparar solamente los valores de un mismo portafolio.
+- En la vista de comparacion, se da la opcion de comparar solamente los valores de un mismo portafolio. No entre dos portafolios distintos.
 
 ## Imagen de la base de datos
 

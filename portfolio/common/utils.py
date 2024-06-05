@@ -3,6 +3,8 @@ from decimal import Decimal
 import pandas as pd
 import plotly.express as px
 
+from portfolio.models import Price
+
 
 def calculate_actives_cuantity(weight, price, portafolio):
     value = portafolio.value
@@ -62,3 +64,17 @@ def comparation_plot(data):
     weights_plot = weights_fig.to_html(full_html=False)
 
     return value_plot, weights_plot
+
+
+def get_minmax_range():
+    min_date_obj = Price.objects.values_list("date", flat=True).order_by("date").first()
+    max_date_obj = (
+        Price.objects.values_list("date", flat=True).order_by("-date").first()
+    )
+
+    if not min_date_obj or not max_date_obj:
+        return None, None
+
+    min_date = min_date_obj.strftime("%Y-%m-%d")
+    max_date = max_date_obj.strftime("%Y-%m-%d")
+    return min_date, max_date
