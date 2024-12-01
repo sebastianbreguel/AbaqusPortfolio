@@ -1,7 +1,8 @@
 import os
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Any, Dict, List, Optional, Tuple
 
 from django.db import transaction
 
@@ -22,18 +23,19 @@ from .models import Asset, Portfolio, Price, Tick, Transaction
 
 
 class FileUploadServices:
-
-    def __init__(self, file_obj):
+    def __init__(self, file_obj: Any) -> None:
         self.file_obj = file_obj
         self.temp_dir = tempfile.gettempdir()
         self.file_path = os.path.join(self.temp_dir, "uploaded_file.xlsx")
 
-    def _save_temp_file(self):
+    def _save_temp_file(self) -> None:
         with open(self.file_path, "wb+") as destination:
             for chunk in self.file_obj.chunks():
                 destination.write(chunk)
 
-    def _read_excel_file(self):
+    def _read_excel_file(
+        self,
+    ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame], Optional[str]]:
         try:
             df_weights = pd.read_excel(self.file_path, sheet_name="weights")
             df_prices = pd.read_excel(self.file_path, sheet_name="Precios")
@@ -45,7 +47,9 @@ class FileUploadServices:
 
         return df_weights, df_prices, None
 
-    def _prepare_data(self, df_weights, df_prices):
+    def _prepare_data(
+        self, df_weights: pd.DataFrame, df_prices: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, date]:
         portfolio_columns = [col for col in df_weights.columns if "portafolio" in col]
         portfolio_columns = {col: col.split(" ")[1] for col in portfolio_columns}
         initial_date = datetime.strptime("2022-02-15", "%Y-%m-%d").date()
@@ -63,7 +67,7 @@ class FileUploadServices:
         return df_weights, df_prices, initial_date
 
     @transaction.atomic
-    def create(self):
+    def create(self) -> Tuple[bool, Optional[str]]:
         self._save_temp_file()
         df_weights, df_prices, error = self._read_excel_file()
         if error:
@@ -106,7 +110,7 @@ class FileUploadServices:
         return True, None
 
 
-def update_instance_fields(instance, data):
+def update_instance_fields(instance: Any, data: Dict[str, Any]) -> Any:
     """
     Update the instance with the given data only if the data has changed.
     """
@@ -132,7 +136,7 @@ def update_instance_fields(instance, data):
 
 
 @transaction.atomic
-def create_or_update_asset(asset_name):
+def create_or_update_asset(asset_name: str) -> Asset:
     asset, created = Asset.objects.get_or_create(name=asset_name)
     if not created:
         asset = update_instance_fields(asset, {"name": asset_name})
@@ -140,7 +144,9 @@ def create_or_update_asset(asset_name):
 
 
 @transaction.atomic
-def create_or_update_portfolio(portfolio_name, value=None):
+def create_or_update_portfolio(
+    portfolio_name: str, value: Optional[float] = None
+) -> Portfolio:
     portfolio, created = Portfolio.objects.get_or_create(name=portfolio_name)
     if not created:
         portfolio = update_instance_fields(portfolio, {"value": value})
@@ -148,7 +154,9 @@ def create_or_update_portfolio(portfolio_name, value=None):
 
 
 @transaction.atomic
-def create_or_update_price(asset_name, date, date_id, value=None):
+def create_or_update_price(
+    asset_name: str, date: str, date_id: int, value: Optional[float] = None
+) -> Price:
     asset = Asset.objects.get(name=asset_name)
     price, created = Price.objects.get_or_create(
         asset=asset, date=date, defaults={"value": value, "date_id": date_id}
@@ -159,7 +167,9 @@ def create_or_update_price(asset_name, date, date_id, value=None):
 
 
 @transaction.atomic
-def create_or_update_tick(asset_name, portfolio_name, date, quantity, weight):
+def create_or_update_tick(
+    asset_name: str, portfolio_name: str, date: str, quantity: float, weight: float
+) -> Tick:
     asset = Asset.objects.get(name=asset_name)
     portfolio = Portfolio.objects.get(name=portfolio_name)
     tick, created = Tick.objects.get_or_create(
@@ -174,7 +184,7 @@ def create_or_update_tick(asset_name, portfolio_name, date, quantity, weight):
 
 
 @api_view(["POST"])
-def create_transaction_api(request):
+def create_transaction_api(request: Any) -> Response:
     form = TransactionForm(request.data)
     if form.is_valid():
         cleaned_data = form.cleaned_data
@@ -218,7 +228,9 @@ def create_transaction_api(request):
 
 
 @transaction.atomic
-def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
+def get_data_in_range(
+    fecha_inicio: str, fecha_fin: str, portfolio_id: int
+) -> List[Dict[str, Any]]:
     """
     inputs:
     - start date
@@ -237,10 +249,10 @@ def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
     initial_quantities = {tick.asset: tick.quantity for tick in ticks}
     result = []
 
-    for date in pd.date_range(fecha_inicio, fecha_fin):
+    for date_tp in pd.date_range(fecha_inicio, fecha_fin):
         adjusted_quantities = initial_quantities.copy()
 
-        for txn in transactions.filter(date__lte=date):
+        for txn in transactions.filter(date__lte=date_tp):
             if txn.transaction_type == "sell":
                 adjusted_quantities[txn.asset] -= txn.quantity
             else:
@@ -251,7 +263,7 @@ def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
             tick = Tick(asset=asset, portfolio=portfolio, quantity=adjusted_quantity)
             temp_ticks.append(tick)
 
-        prices = Price.objects.filter(date=date)
+        prices = Price.objects.filter(date=date_tp)
         portfolio_value = calculate_portfolio_value(temp_ticks, prices)
         weights = calculate_weights(prices, temp_ticks, portfolio_value)
 
@@ -267,8 +279,9 @@ def get_data_in_range(fecha_inicio, fecha_fin, portfolio_id):
     return result
 
 
-def validate_date_range(fecha_inicio, fecha_fin):
-
+def validate_date_range(
+    fecha_inicio: str, fecha_fin: str
+) -> Tuple[bool, Optional[str]]:
     min_date, max_date = get_minmax_range()
 
     try:

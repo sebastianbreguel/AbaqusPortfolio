@@ -32,7 +32,6 @@ def calculate_portfolio_value(quantities, prices):
 
 
 def comparation_plot(data):
-
     dates = [entry["date"] for entry in data]
     values = [entry["value"] for entry in data]
     weights = [entry["weights"] for entry in data]
